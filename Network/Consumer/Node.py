@@ -20,9 +20,9 @@ class Node:
         atexit.register(self._killNode)
         time.sleep(1)
 
-    def getUpdate(self):
-        update = self.toNodeQ.get()  # Blocking call
-        while (self.toNodeQ.empty() == False):  # Barbaric way of getting the last update
+    def getUpdate(self):  # Blocking call
+        update = self.toNodeQ.get()
+        while (self.toNodeQ.qsize() > 0):  # Barbaric way of getting the last update
             update = self.toNodeQ.get()
         return update
 
