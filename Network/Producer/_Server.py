@@ -39,7 +39,7 @@ def contentUpdater(producerQ):
 
     while (True):
         newContent = producerQ.get()
-        while (producerQ.empty() == False):  # Barbaric way of flushing until getting the most recent update...
+        while (producerQ.qsize() > 0):  # Barbaric way of flushing until getting the most recent update...
             newContent = producerQ.get()
 
         CONTENT_LOCK.acquire()

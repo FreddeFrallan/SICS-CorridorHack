@@ -39,6 +39,7 @@ class ConsumerClient(LineReceiver):
         # Recursively handling any leftover bytes
         if (len(self.currentPackage) >= self.currentMsgSize):
             SEND_TO_NODE_QUEUE.put(self.currentPackage[:self.currentMsgSize])
+            #print("Got grame")
             self.bufferingMsg = False
 
             restMsg = self.currentPackage[self.currentMsgSize:]

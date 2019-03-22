@@ -60,3 +60,13 @@ target/
 \.idea/
 
 venv/
+
+Demo/Img2Txt/Data/checkpointNew\.data-00000-of-00001
+
+Demo/Img2Txt/Data/checkpointNew\.index
+
+Demo/Img2Txt/Data/checkpointNew\.meta
+
+Demo/Img2Txt/Data/Img2TxtData\.zip
+
+Demo/Img2Txt/Data/word_counts\.txt
