@@ -74,6 +74,7 @@ def send_cam(name, port, cam_id=0):
     import atexit
     import Network.Producer.Node
     import hello
+    import time
     
     
     p = Network.Producer.Node.Node(port)
@@ -92,11 +93,21 @@ def send_cam(name, port, cam_id=0):
         atexit.register(cam.release)
 
         print(f'Starting steam {cam.isOpened()}')
+
+        fps = cam.get(cv2.CAP_PROP_FPS)
+        t0 = time.time()
+        frame_nr = 0
+
         while cam.isOpened():
             ok, img = cam.read()
 
             if ok:
                 data = pickle.dumps(img[::3, ::3])
+
+                t1 = t0 + frame_nr / fps
+                frame_nr += 1
+                time.sleep(max(0, t1 - time.time()))
+
                 p.updateContent(data)
             else:
                 break
@@ -122,15 +133,27 @@ def view_cam(name):
     import cv2
     import Network.Consumer.Node
     import hello
+    import time
 
     [[_, ip, port]] = hello.look_for(name, get_many=False)
     c = Network.Consumer.Node.Node(ip, port)
 
+    fps = 25
+    t0 = time.time()
+    frame_nr = 0
+
     done = False
     while not done:
         img = pickle.loads(c.getUpdate())
+        img = cv2.resize(img,None,fx=3, fy=3, interpolation = cv2.INTER_CUBIC)
+
         cv2.imshow('Frame', img)
-        key = chr(cv2.waitKey(20) & 0xff)
+
+        frame_nr += 1
+        t1 = t0 + frame_nr / fps
+        dt = max(1, 1000 * (t1 - time.time())) # milliseconds
+        dt = int(dt)
+        key = chr(cv2.waitKey(dt) & 0xff)
         if key == 'q': done=True
         
     cv2.destroyAllWindows()
