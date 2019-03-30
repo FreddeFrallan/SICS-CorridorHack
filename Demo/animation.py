@@ -100,19 +100,23 @@ urls = ['https://www.youtube.com/watch?v=X0vK_57vQ7s',
 
 streams = [StreamLoader(url) for url in urls]
 processes = [threading.Thread(target=s.fetchloop) for s in streams]
-for p in processes: p.start()
+for p in processes: 
+    p.start()
 
 t0 = time.time()
 next_frame = t0 
 done = False
+
+cv2.namedWindow("window", cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty("window",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
 
 while not done:
     fps = 20
     imgs = [s.read() for s in streams]
     imgs = (imgs + imgs)[:8]
     t = time.time() - t0
-    img = merge_images(t, imgs)
-    cv2.imshow('', img)
+    img = merge_images(t/2, imgs)
+    cv2.imshow('window', img)
     next_frame += 1/fps
 
     x = cv2.waitKey(max(1, int(1000*(next_frame - time.time()))))
