@@ -99,7 +99,7 @@ urls = ['https://www.youtube.com/watch?v=X0vK_57vQ7s',
 ]
 
 streams = [StreamLoader(url) for url in urls]
-processes = [threading.Thread(target=s.fetchloop) for s in streams]
+processes = [threading.Thread(target=s.fetchloop, daemon=True) for s in streams]
 for p in processes: 
     p.start()
 
