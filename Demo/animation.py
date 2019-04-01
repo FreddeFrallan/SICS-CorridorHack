@@ -95,8 +95,10 @@ urls = ['https://www.youtube.com/watch?v=X0vK_57vQ7s',
         'https://www.youtube.com/watch?v=1EiC9bvVGnk',
         'https://www.youtube.com/watch?v=rWX6BuHUSdM',
         'https://www.youtube.com/watch?v=Nxs53pkE2TY',
-        0,
-]
+        'https://www.youtube.com/watch?v=DBd560d1DIM',
+        'https://www.youtube.com/watch?v=sX1Y2JMK6g8',
+        'https://www.youtube.com/watch?v=JqUREqYduHw',
+        0]
 
 streams = [StreamLoader(url) for url in urls]
 processes = [threading.Thread(target=s.fetchloop, daemon=True) for s in streams]
