@@ -65,6 +65,7 @@ def merge_images(t, imgs):
 
 class StreamLoader():
     def __init__(self, url):
+        self.url = url
         try:
             url1 = pafy.new(url).getbest().url
             url = url1
@@ -75,20 +76,31 @@ class StreamLoader():
         self.fps = self.c.get(cv2.CAP_PROP_FPS)
         self.img = self.c.read()[1]
         self.next_frame = time.time()
+        self.buf = [self.img]
 
 
     def fetchloop(self):
         nr = 0
         while True:
             nr += 1
-            time.sleep(max(0, self.next_frame - time.time()))
-            self.next_frame += 1 / self.fps
+            if self.url == 0:
+                time.sleep(max(0, self.next_frame - time.time()))
             ok, img = self.c.read()
             if ok:
-                self.img = img
+                self.buf.append(img)
+
+
+    def updateloop(self):
+        while True:
+            time.sleep(max(0, self.next_frame - time.time()))
+            if len(self.buf) > 0:
+                self.img = self.buf[0]
+                del self.buf[0]
+            self.next_frame += 1 / self.fps
 
     def read(self):
         return self.img
+
 
 
 urls = ['https://www.youtube.com/watch?v=X0vK_57vQ7s',
@@ -102,6 +114,8 @@ urls = ['https://www.youtube.com/watch?v=X0vK_57vQ7s',
 
 streams = [StreamLoader(url) for url in urls]
 processes = [threading.Thread(target=s.fetchloop, daemon=True) for s in streams]
+processes += [threading.Thread(target=s.updateloop, daemon=True) for s in streams]
+
 for p in processes: 
     p.start()
 
