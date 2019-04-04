@@ -5,25 +5,55 @@ import vstream
 import time
 import pickle
 import cv2
+import os
 
-import Demo.Img2Txt.ModelWorker as Img2Txt
+path = os.path.dirname(os.path.realpath(__file__))
+CHECKPOINT_PATH = f"{path}/model/checkpointNew"
+VOCABULARY_PATH = f"{path}/model/word_counts.txt"
 
-CHECKPOINT_PATH = "model/checkpointNew"
-VOCABULARY_PATH = "model/word_counts.txt"
+def mkPredictor():
+    import tensorflow as tf
+    from Demo.Img2Txt.im2txt.im2txt.inference_utils import caption_generator
+    from Demo.Img2Txt.im2txt.im2txt.inference_utils import vocabulary
+    from Demo.Img2Txt.im2txt.im2txt import inference_wrapper
+    from Demo.Img2Txt.im2txt.im2txt import configuration
+
+    # Init the vocabulary
+    vocab = vocabulary.Vocabulary(VOCABULARY_PATH)
+
+    # Build the graph
+    import tensorflow as tf
+    g = tf.Graph()
+    with g.as_default():
+        model = inference_wrapper.InferenceWrapper()
+        restore_fn = model.build_graph_from_config(configuration.ModelConfig(),
+                                                   CHECKPOINT_PATH)
+    g.finalize()
+
+    # Prepare a session object
+    sess = tf.Session(graph=g)
+    restore_fn(sess)  # Load the model from checkpoint.
+    generator = caption_generator.CaptionGenerator(model, vocab)
+
+    def predict(image):
+        image = cv2.imencode('.jpg', image)[1].tobytes()
+        for caption in generator.beam_search(sess, image):
+            # Ignore begin and end words.
+            sentence = [vocab.id_to_word(w) for w in caption.sentence[1:-1]]
+            yield " ".join(sentence)
+    return predict
+
 
 def worker(queue_img, queue_txt):
     queue_txt.put('Thinking...')
-    
 
-    worker = Img2Txt.Img2TextWorker(CHECKPOINT_PATH, VOCABULARY_PATH) 
+    predict = mkPredictor()
 
     while True:
         img = queue_img.get()
         print(f'got img {img.shape}')
-        predictedSentences = worker.predictNumpyFrame(img)
-        topSentence = predictedSentences[0]
-        text = topSentence
-        text = text.replace('<S>', '').replace(' .', '')
+        topSentence = next(predict(img))
+        text = topSentence.replace('<S>', '').replace(' .', '')
         queue_txt.put(text)
 
 ######################################################################
