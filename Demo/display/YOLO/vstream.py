@@ -12,7 +12,8 @@ import threading
 class VideoBuffer():
     def __init__(self, url):
         self.url = url
-        self.restartStream()
+        self.buf = []
+        self.init_input_feed()
 
     def read(self):
         ok, img = self.c.read()
@@ -26,14 +27,10 @@ class VideoBuffer():
 
             try:
                 image = self.read()
+                self.buf.append(image)
             except:
-                self.c = cv2.VideoCapture(self.url)
-                self.restartStream()
-                continue
-
-            # image = cv2.resize(image, (0,0), fx=0.5, fy=0.5)
-            self.buf.append(image)
-
+                self.init_input_feed()
+                
     def empty_buffer(self):
         t0 = time.time()
         next_frame = t0
@@ -41,6 +38,7 @@ class VideoBuffer():
             time.sleep(max(0, next_frame - time.time()))
             if len(self.buf) > 1:
                 del self.buf[0]
+                
             next_frame += 1 / self.fps
 
     def start(self):
@@ -51,26 +49,20 @@ class VideoBuffer():
 
     def stop(self):
         self.running = False
-        self.buf = []
 
-    def restartStream(self):
-        try:
-            url = int(self.url)
-        except:
-            pass
+    def init_input_feed(self):
+        url = self.url
+        try:    url = int(url) # maybe use the local camera
+        except: pass
 
-        self.c = cv2.VideoCapture(self.url)
+        self.c = cv2.VideoCapture(url)
         assert self.c.isOpened()
 
         self.fps = self.c.get(cv2.CAP_PROP_FPS)
-        self.buf = []
         self.running = True
 
 
 class YoutubeBuffer(VideoBuffer):
-    def __init__(self, url):
-        self.url = url
-        self.restartStream()
 
     def read(self):
         w, h, d = self.res
@@ -84,12 +76,17 @@ class YoutubeBuffer(VideoBuffer):
         super(YoutubeBuffer, self).stop()
         self.pipe.kill()
 
-    def restartStream(self):
+    def init_input_feed(self):
+        try:
+            self.pipe.terminate()
+            import time; time.sleep(1)
+            self.pipe.kill()
+        except:
+            pass
+        
         best = pafy.new(self.url).getbest()
         u = best.url
         self.res = best.dimensions + (3,)
-        self.buf = []
-        self.running = True
         self.fps = 30
 
         command = [FFMPEG_BIN,
@@ -99,8 +96,14 @@ class YoutubeBuffer(VideoBuffer):
                    #            '-pix_fmt', 'rgb24',
                    '-pix_fmt', 'bgr24',
                    '-vcodec', 'rawvideo', '-']
-        self.pipe = sp.Popen(command, stdout=sp.PIPE, bufsize=10 ** 6, stderr=sp.DEVNULL)
-
+        try:
+            self.pipe = sp.Popen(command, stdout=sp.PIPE, stderr=sp.DEVNULL)            
+            self.running = True
+        except:
+            print(f'Failed to restart input stream, buf={len(self.buf)}')
+            if len(self.buf) == 1:
+                print(f'stopping...')
+                self.stop()
 
 if __name__ == '__main__':
     import sys
@@ -119,8 +122,7 @@ if __name__ == '__main__':
     next_frame = t0
     fps = 30
 
-    while True:
-        print(len(b.buf))
+    while b.running or len(b.buf)>1:
         if len(b.buf) > 0:
             image = b.buf[0]
             cv2.imshow('', image)

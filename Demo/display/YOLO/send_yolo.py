@@ -45,9 +45,16 @@ while True:
     if result.done():
         objects = result.result()
         result = None
-        print(' '.join(x[0][0] for x in objects))
+        if len(objects) > 0:
+            print(' '.join(x[0][0] for x in objects))
+            
 
     drawOnImage(image, objects)
     # send result to display
     send_img(image)
 
+    if  len(vid.buf)==1 and not vid.running:
+        break
+
+
+print('goodbye')

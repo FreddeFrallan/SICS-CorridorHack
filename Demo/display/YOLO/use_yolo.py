@@ -14,7 +14,7 @@ def start_yolo_thread():
             ans, img = q.get()
             ans.set_result(YOLO(img))
     
-    p = threading.Thread(target=yolo_worker)
+    p = threading.Thread(target=yolo_worker, daemon=True)
     p.start()
 
     def send_job(image):
