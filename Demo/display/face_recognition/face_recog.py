@@ -100,6 +100,8 @@ def flush_input():
 
 def add_faces_from_dir(dirname, faces, names, face_model):
     import glob
+    import os
+    import cv2
 
     detector, shape_predictor, facerec = face_model
 
@@ -118,12 +120,12 @@ def add_faces_from_dir(dirname, faces, names, face_model):
         face_hash = facerec.compute_face_descriptor(face_chip)
         face_hash = np.array(face_hash).reshape((1, 128))
 
-        if dist(faces, face).min() > 0:
-            faces = np.concatenate([faces, face])
+        if dist(faces, face_hash).min() > 0:
+            faces = np.concatenate([faces, face_hash])
             names.append(name)
             with open(faces_db, 'a') as f:
                 f.write(name+'\n')
-                f.write(str(face.tolist())+'\n')
+                f.write(str(face_hash.tolist())+'\n')
             print(f'added {name} to face database')
 
     return faces, names
@@ -142,10 +144,22 @@ if __name__ == '__main__':
     args.add_argument('--video', default=cam_stream)
     
     args.add_argument('--add_faces', default='')
+    args.add_argument('--remote_display', default='localhost:5001')
+    args.add_argument('--local_display', default=False, action='store_true')
+    
     args = args.parse_args()
     try: args.video = int(args.video)
     except: pass
 
+    # read face database and add more faces from specified dir
+    faces_db = 'faces.db'
+    faces, names = read_facedatabase(faces_db)
+    if args.add_faces:
+        face_model = load_models()
+        faces, names = add_faces_from_dir(args.add_faces,
+                                          faces, names, face_model)
+
+    # prepare to send to display
     def make_sender(frame_nr, host='localhost', port=5001):
         import listener_t as listener
         import pickle
@@ -153,15 +167,15 @@ if __name__ == '__main__':
         def to_display(img):
             sender.send(frame_nr, pickle.dumps(img))
         return to_display
-    to_display = make_sender(frame_nr=2)
-   
-    
-    faces_db = 'faces.db'
-    faces, names = read_facedatabase(faces_db)
-    if args.add_faces:
-        face_model = load_models()
-        faces, names = add_faces_from_dir(args.add_faces,
-                                          faces, names, face_model)
+
+    if ':' in args.remote_display:
+        host, port = args.remote_display.split(':')
+        port = int(port)
+        to_display = make_sender(frame_nr=2, host=host, port=port)
+        remote_display = True
+    else:
+        remote_display = False
+
 
     send_job, recv_w = mp.Pipe()
     send_w, get_answer = mp.Pipe()
@@ -196,27 +210,27 @@ if __name__ == '__main__':
         
         if not pending:
             pending = True
-            print('sending image')
             send_job.send(('img', img))
         if pending and get_answer.poll():
             result = get_answer.recv()
-            print(f'result = {result}')
             pending = False
+            n = 'people: '
+            for i, (best_match, (x0, y0, x1, y1), face, face_img, err) \
+                in enumerate(result):
+                n += f'{names[best_match]}, '
+            print(n)
 
-        n = 'people: '
         for i, (best_match, (x0, y0, x1, y1), face, face_img, err) \
             in enumerate(result):
             drawText(img, f'{names[best_match]}', x0, y1)
-            n += f'{names[best_match]}, '
             # insert faces into image
             #hh, ww, _ = face_img.shape
             #img[0:hh, i * ww:(i + 1) * ww] = face_img
 
-        to_display(img)
-
-        #print(n)
-        
-        if False:
+        if remote_display:
+            to_display(img)
+            
+        if args.local_display:
             cv2.imshow('', img)
             key = cv2.waitKey(10)
             if key == ord('q'):
