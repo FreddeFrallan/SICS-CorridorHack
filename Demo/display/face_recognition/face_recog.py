@@ -6,7 +6,6 @@ import concurrent
 import queue
 import numpy as np
 import dlib
-import newfiles
 import cv2
 
 def dist(a, b):
