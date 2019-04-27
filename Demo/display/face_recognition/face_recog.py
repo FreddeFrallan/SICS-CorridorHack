@@ -1,31 +1,16 @@
 import multiprocessing as mp
 import time
+import os
+import glob
 import concurrent
 import queue
 import numpy as np
 import dlib
-
+import newfiles
+import cv2
 
 def dist(a, b):
     return np.mean((a-b)**2, axis=1)
-
-
-def read_facedatabase(faces_db):
-    faces = np.array([]).reshape((0, 128))
-    names = []
-
-    with open(faces_db) as f:
-        while True:
-            name = f.readline().strip()
-            if len(name) == 0:
-                break
-            data = f.readline()
-            data = eval(data)
-            face = np.array(data).reshape((1, 128))
-            faces = np.concatenate([faces, face])
-            names.append(name)
-
-    return faces, names
 
 
 def load_models():
@@ -41,7 +26,7 @@ def load_models():
     return detector, shape_predictor, facerec
 
 
-def get_faces(img, faces, face_model):
+def get_faces(img, faces, names, face_model):
     detector, shape_predictor, facerec = face_model
     result = []
     detected = detector(img, 1)
@@ -55,12 +40,26 @@ def get_faces(img, faces, face_model):
         err = np.min(distances)
         r = shape.rect
         coords = (r.left(), r.top(), r.right(), r.bottom())
-        result.append((best_match, coords, face_hash, face_chip, err))
+        result.append((names[best_match],
+                       coords, face_hash, face_chip, err))
     return result
 
 
+
+def start_worker(worker):
+    send_job, recv_w = mp.Pipe()
+    send_w, get_answer = mp.Pipe()
+
+    w = mp.Process(target=worker, args=(recv_w, send_w),
+                   daemon=True)
+    w.start()
+
+    return send_job.send, get_answer.recv, get_answer.poll
+
+
 def worker(p_in, p_out):
-    global faces, names
+    faces = np.zeros((1,128))
+    names = ['zero']
 
     face_model = load_models()
 
@@ -68,12 +67,36 @@ def worker(p_in, p_out):
         cmd, data = p_in.recv()
         if cmd == 'img':
             img = data
-            result = get_faces(img, faces, face_model)
+            result = get_faces(img, faces, names, face_model)
             p_out.send(result)
         if cmd == 'newface':
             face, name = data
             faces = np.concatenate([faces, face])
             names.append(name)
+
+
+def add_faces(d, w):
+    to_worker, from_worker, poll_worker = w
+
+    faces, names = [], []
+    
+    for fn in glob.glob(f'{d}/*'):
+        name = os.path.basename(fn)
+        name = os.path.splitext(name)[0]
+        img = cv2.imread(fn)
+        os.remove(fn)
+        if img is None:
+            continue
+        to_worker(('img', img))
+        result = from_worker()
+        if len(result) == 1:
+            _, coords, face_hash, face_chip, err = result[0]
+
+            print(name, err)
+            if err != 0:
+                face_hash = face_hash.reshape((1, 128))
+                to_worker(('newface',(face_hash, name)))
+                yield face_hash, name
 
 
 def drawText(image, text, x, y):
@@ -86,7 +109,18 @@ def drawText(image, text, x, y):
                 lineType=2)
 
 
-def flush_input():
+def drawText(img, text, x, y, font):
+    import PIL.ImageDraw
+    import PIL.Image
+    im = PIL.Image.fromarray(img)
+    draw = PIL.ImageDraw.ImageDraw(im)
+    # fontname = 'Consolas Bold Italic.ttf'
+    # font = PIL.ImageFont.truetype(fontname, size=40)
+    draw.text((x, y), text, font=font)
+    return np.array(im)
+
+
+def flush_stdin():
     try:
         import msvcrt
         while msvcrt.kbhit():
@@ -98,37 +132,13 @@ def flush_input():
         termios.tcflush(sys.stdin, termios.TCIOFLUSH)
 
 
-def add_faces_from_dir(dirname, faces, names, face_model):
-    import glob
-    import os
-    import cv2
+def read_two(g):
+    for a in g: yield a, next(g)
 
-    detector, shape_predictor, facerec = face_model
 
-    for f in glob.glob(f'{dirname}/*'):
-        name = os.path.basename(f)
-        name = os.path.splitext(name)[0]
-        img = cv2.imread(f)
-        d = detector(img, 1)
-        if len(d) != 1:
-            print(f'error finding faces in {f}, {len(d)} found')
-            continue
-        d = d[0]
-
-        shape = shape_predictor(img, d)
-        face_chip = dlib.get_face_chip(img, shape)
-        face_hash = facerec.compute_face_descriptor(face_chip)
-        face_hash = np.array(face_hash).reshape((1, 128))
-
-        if dist(faces, face_hash).min() > 0:
-            faces = np.concatenate([faces, face_hash])
-            names.append(name)
-            with open(faces_db, 'a') as f:
-                f.write(name+'\n')
-                f.write(str(face_hash.tolist())+'\n')
-            print(f'added {name} to face database')
-
-    return faces, names
+def tryint(x):
+    try: return int(x)
+    except: return x
 
 ######################################################################
 
@@ -142,23 +152,32 @@ if __name__ == '__main__':
     cam_stream = 'rtsp://192.168.0.142:7447/5ca3cbe70c0af3aa8fbeab20_1'
 
     args.add_argument('--video', default=cam_stream)
-    
+
     args.add_argument('--add_faces', default='')
     args.add_argument('--remote_display', default='localhost:5001')
     args.add_argument('--local_display', default=False, action='store_true')
-    
-    args = args.parse_args()
-    try: args.video = int(args.video)
-    except: pass
 
+    args = args.parse_args()
+    args.video = tryint(args.video)
+    # cv2 opens a local camera if it is an int
+
+    ####### ASYNCHRONOUS FACE RECOGNITION PROCESS
+    w = start_worker(worker)
+    to_worker, from_worker, poll_worker = w
+
+    ######## FACES DATABASE
     # read face database and add more faces from specified dir
     faces_db = 'faces.db'
-    faces, names = read_facedatabase(faces_db)
-    if args.add_faces:
-        face_model = load_models()
-        faces, names = add_faces_from_dir(args.add_faces,
-                                          faces, names, face_model)
+    for fdb in [faces_db, 'acreo.db']:
+        with open(fdb) as f:
+            for name, face in read_two(f):
+                face = np.array(eval(face)).reshape((1, 128))
+                to_worker(('newface', (face, name)))
 
+    last_face_check = 0
+
+    
+    ####### REMOTE DISPLAY
     # prepare to send to display
     def make_sender(frame_nr, host='localhost', port=5001):
         import listener_t as listener
@@ -168,6 +187,7 @@ if __name__ == '__main__':
             sender.send(frame_nr, pickle.dumps(img))
         return to_display
 
+    args.remote_display = ''
     if ':' in args.remote_display:
         host, port = args.remote_display.split(':')
         port = int(port)
@@ -176,77 +196,92 @@ if __name__ == '__main__':
     else:
         remote_display = False
 
-
-    send_job, recv_w = mp.Pipe()
-    send_w, get_answer = mp.Pipe()
-    # worker needs the global variable face_model to be defined here
-    w = mp.Process(target=worker, args=(recv_w, send_w), daemon=True)
-    w.start()
-
+    ######## INPUT SOURCE OF IMAGES
     import cv2
     c = cv2.VideoCapture(args.video)
     if not c.isOpened():
         print(f'couldnt open {args.video}')
         import sys
         sys.exit(1)
-    
+
+    ########## FOR DRAWING TEXT ON IMAGE
+    import PIL.ImageFont
+    fontname = 'Consolas Bold Italic.ttf' 
+    font = PIL.ImageFont.truetype(fontname, size=40)
+
+
+    #################################
     pending = False
     result = []
 
-    import time
     tnext = time.time()
     fps = 30
-    print('starting')
+    print(f'starting')
     while True:
         time.sleep(max(0, tnext-time.time()))
         tnext += 1/fps
-        
+
         if not c.isOpened():
             break
-        
+
         ok, img = c.read()
         if not ok:
             break
-        
+
         if not pending:
             pending = True
-            send_job.send(('img', img))
-        if pending and get_answer.poll():
-            result = get_answer.recv()
+            to_worker(('img', img))
+        if pending and poll_worker():
+            result = from_worker()
             pending = False
-            n = 'people: '
-            for i, (best_match, (x0, y0, x1, y1), face, face_img, err) \
-                in enumerate(result):
-                n += f'{names[best_match]}, '
-            print(n)
+            names = []
+            for i, (name, (x0, y0, x1, y1),
+                    face, face_img, err) in enumerate(result):
+                names.append(name)
 
-        for i, (best_match, (x0, y0, x1, y1), face, face_img, err) \
-            in enumerate(result):
-            drawText(img, f'{names[best_match]}', x0, y1)
+            if len(names) > 0: print('\n' + (', '.join(names)))
+            else: print('.',end='', flush=True)
+
+        for i, (name, (x0, y0, x1, y1), face, face_img,
+                err) in enumerate(result):
+            img = drawText(img, f'{name}', x0, y1, font)
             # insert faces into image
-            #hh, ww, _ = face_img.shape
-            #img[0:hh, i * ww:(i + 1) * ww] = face_img
+            # hh, ww, _ = face_img.shape
+            # img[0:hh, i * ww:(i + 1) * ww] = face_img
 
         if remote_display:
             to_display(img)
-            
+
+        ######### SEE IF NEW FACE IMAGES HAVE BEEN ADDED
+        if args.add_faces:
+            ctime = os.stat(args.add_faces).st_ctime
+            if ctime > last_face_check:
+                if pending:
+                    _ = from_worker()
+                    pending = False
+                last_face_check = ctime
+                with open(faces_db, 'a') as f:
+                    for face, name in add_faces(d=args.add_faces, w=w):
+                        to_worker(('newface', (face, name)))
+                        f.write(name+'\n')
+                        f.write(str(face.tolist())+'\n')
+
         if args.local_display:
             cv2.imshow('', img)
             key = cv2.waitKey(10)
             if key == ord('q'):
                 break
             if key == ord('a'):
-                for best_match, (x0, y0, x1, y1), face, face_img, err in result:
-                    flush_input()
+                for best_match, _, (x0, y0, x1, y1), \
+                    face, face_img, err in result:
+                    flush_stdin()
                     cv2.imshow('', face_img)
                     cv2.waitKey(1)
-                    newname = input('Who is this? '
+                    name = input('Who is this? '
                                     '(just press RETURN to skip this face) : ')
-                    if newname != '':
-                        faces = np.concatenate([faces, face])
-                        names.append(newname)
+                    if name != '':
                         with open(faces_db, 'a') as f:
                             f.write(newname+'\n')
                             f.write(str(face.tolist())+'\n')
 
-                        send_job.send(('newface',(face, newname))) # tell the worker
+                        to_worker(('newface', (face, name)))
