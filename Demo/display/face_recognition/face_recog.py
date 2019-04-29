@@ -186,7 +186,6 @@ if __name__ == '__main__':
             sender.send(frame_nr, pickle.dumps(img))
         return to_display
 
-    args.remote_display = ''
     if ':' in args.remote_display:
         host, port = args.remote_display.split(':')
         port = int(port)
