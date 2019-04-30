@@ -17,7 +17,53 @@ def get_images(company):
 
     return images
 
-for k in get_images('sics'):
-    print(k)
 
+
+
+def get_hashes(company, w, quiet=True):
+    to_worker, from_worker, poll_worker = w
+    
+    import os
+    import sys
+    import cv2
+    import tempfile
+    import time
+            
+    images = get_images(company)
+
+    hashes = {}
+
+    temp_name = next(tempfile._get_candidate_names())
+    fn = f'/tmp/facerecog.{temp_name}'
+    
+    for k in images:
+        with open(fn, 'wb') as f: f.write(images[k])
+        img = cv2.imread(fn)
+        os.remove(fn)
+
+        to_worker(('img', img))
+        while poll_worker() == False:
+            if not quiet: print('.',end='', file=sys.stderr)
+            time.sleep(0.01)
+        if not quiet: print(file=sys.stderr)
+        result = from_worker()
+        if len(result) == 1:
+            face_hash = result[0][2]
+            yield k, face_hash
+        else:
+            if not quiet: print(f'Failed: {k}', file=sys.stderr)
+
+
+    return hashes
+
+
+if __name__ == '__main__':
+    import face_recog
+    w = face_recog.start_worker(face_recog.worker)
+    to_worker, from_worker, poll_worker = w
+
+    for k, h in get_hashes('sics', w):
+        print(k)
+        print(h.tolist())
+        to_worker(('newface', (h, k)))
         
