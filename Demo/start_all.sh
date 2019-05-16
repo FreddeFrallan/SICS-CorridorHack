@@ -1,5 +1,7 @@
 start_animation() (
-    cmd="cd ~fredrik/Desktop/SICS-CorridorHack/Demo/display ; env DISPLAY=:1 PATH=/home/fredrik/anaconda3/bin:$PATH ipython animation.py localhost 5001"
+    DISPLAY="${1:-:0}"
+    cmd="cd ~fredrik/Desktop/SICS-CorridorHack/Demo/display ; env DISPLAY=$DISPLAY PATH=/home/fredrik/anaconda3/bin:$PATH ipython animation.py localhost 5001"
+    echo "$cmd"
      sudo su -l fredrik -c bash -c "$cmd"
 )
 
@@ -34,7 +36,7 @@ start_camera() (
 
 start_YOLO1() (
     cd ~larsr/SICS-CorridorHack/Demo/display/YOLO
-    ABCNEWS='https://www.youtube.com/watch?v=rQSwh3bgs5k'
+    ABCNEWS='https://www.youtube.com/watch?v=73Vr1mfnWVY'
     taskset --cpu-list 5 env CUDA_VISIBLE_DEVICES=1 ipython send_yolo.py localhost 5001 6  "$ABCNEWS"
 )
 
