@@ -71,18 +71,21 @@ def demo_run():
       #
       #if still_open == False:
       #  return
-
-      img = env.render('rgb_array')
-      to_display(img)
+      if frame%3 == 0:
+        from PIL import Image
+        img = env.render('rgb_array')
+        img = img[:,:,::-1]
+         to_display(img)
       
-      if not done: continue
-      if restart_delay == 0:
-        print("score=%0.2f in %i frames" % (score, frame))
-        if still_open != True:  # not True in multiplayer or non-Roboschool environment
-          break
-        restart_delay = 60 * 2  # 2 sec at 60 fps
-      restart_delay -= 1
-      if restart_delay == 0: break
+      if False:
+        if not done: continue
+        if restart_delay == 0:
+          print("score=%0.2f in %i frames" % (score, frame))
+          if still_open != True:  # not True in multiplayer or non-Roboschool environment
+            break
+          restart_delay = 60 * 2  # 2 sec at 60 fps
+        restart_delay -= 1
+        if restart_delay == 0: break
 
 
 # yapf: disable
