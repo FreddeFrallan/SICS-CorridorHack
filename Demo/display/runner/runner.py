@@ -75,7 +75,7 @@ def demo_run():
         from PIL import Image
         img = env.render('rgb_array')
         img = img[:,:,::-1]
-         to_display(img)
+        to_display(img)
       
       if False:
         if not done: continue
