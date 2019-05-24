@@ -36,7 +36,7 @@ start_camera() (
 
 start_YOLO1() (
     cd ~larsr/SICS-CorridorHack/Demo/display/YOLO
-    ABCNEWS='https://www.youtube.com/watch?v=73Vr1mfnWVY'
+    ABCNEWS='https://www.youtube.com/watch?v=macGeyVRtZw'
     taskset --cpu-list 5 env CUDA_VISIBLE_DEVICES=1 ipython send_yolo.py localhost 5001 6  "$ABCNEWS"
 )
 
@@ -46,6 +46,10 @@ start_YOLO2() (
     taskset --cpu-list 4 env CUDA_VISIBLE_DEVICES=1 ipython send_yolo.py localhost 5001 5  "$TRAFFIC"
 )
 
+start_runner() (
+     cd ~larsr/SICS-CorridorHack/Demo/display/runner
+     taskset --cpu-list 4 env CUDA_VISIBLE_DEVICES=1 python runner.py
+)
 
 
 $@
