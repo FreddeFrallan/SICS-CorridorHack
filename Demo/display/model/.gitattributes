@@ -1,0 +1,4 @@
+checkpointNew.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
+checkpointNew.index filter=lfs diff=lfs merge=lfs -text
+checkpointNew.meta filter=lfs diff=lfs merge=lfs -text
+checkpointNew.* filter=lfs diff=lfs merge=lfs -text

@@ -1,5 +1,4 @@
 import multiprocessing as mp
-from PIL import Image
 import os, cv2
 
 
