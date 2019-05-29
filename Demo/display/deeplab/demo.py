@@ -184,6 +184,22 @@ b.start()
 while len(b.buf)==0:
     import time; time.sleep(0.01)
 
+
+
+
+host, port, frame_nr = 'localhost', 5001, 1
+####### REMOTE DISPLAY
+# prepare to send to display
+def make_sender(frame_nr, host='localhost', port=5001):
+    import listener_t as listener
+    import pickle
+    sender = listener.Sender(host, port)
+    def to_display(img):
+        sender.send(frame_nr, pickle.dumps(img))
+    return to_display
+
+to_display = make_sender(frame_nr=frame_nr, host=host, port=port)
+
 import cv2
 
 #plt.ion()
@@ -209,15 +225,20 @@ def fig2data ( fig ):
 
 while True:
     resized_im, seg_map = MODEL.run(Image.fromarray(b.buf[0]))
-    plt.cla()
-    plt.axis('off')
 
-    plt.imshow(resized_im);
-    seg_image = label_to_color_image(seg_map).astype(np.uint8)
-    plt.imshow(seg_image, alpha=0.7)
-    plt.gcf().subplots_adjust(bottom=0, top=1, left=0, right=1)
+    to_display(resized_im)
+    if False: 
+      plt.cla()
+      plt.axis('off')
+
+      plt.imshow(resized_im);
+      seg_image = label_to_color_image(seg_map).astype(np.uint8)
+      plt.imshow(seg_image, alpha=0.7)
+      plt.gcf().subplots_adjust(bottom=0, top=1, left=0, right=1)
 
     
-    cv2.imshow('', fig2data(plt.gcf()))
-    k = cv2.waitKey(10)
-    if k == ord('q'): break
+      cv2.imshow('', fig2data(plt.gcf()))
+      k = cv2.waitKey(10)
+      if k == ord('q'): break
+
+    
