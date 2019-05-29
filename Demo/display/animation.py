@@ -63,7 +63,7 @@ def merge_images(t, imgs):
     for i, img in enumerate(imgs):
         try:
             (x0, y0), (x1, y1) = ul(t - 5 * i).astype(int), lr(t - 5 * i).astype(int)
-            a[y0:y1, x0:x1] = cv2.resize(img.astype(float), (x1-x0,y1-y0))
+            cv2.resize(img.astype(float), (x1-x0,y1-y0), a[y0:y1, x0:x1])
         except:
             print(f'bad image {i}, {img.shape}')
 
