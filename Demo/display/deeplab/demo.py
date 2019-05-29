@@ -187,7 +187,7 @@ while len(b.buf)==0:
 
 
 
-host, port, frame_nr = 'localhost', 5001, 1
+host, port, frame_nr = 'localhost', 5001, 7
 ####### REMOTE DISPLAY
 # prepare to send to display
 def make_sender(frame_nr, host='localhost', port=5001):
@@ -226,7 +226,9 @@ def fig2data ( fig ):
 while True:
     resized_im, seg_map = MODEL.run(Image.fromarray(b.buf[0]))
 
-    to_display(resized_im)
+    seg_image = label_to_color_image(seg_map).astype(np.uint8)
+    to_display(cv2.addWeighted(np.array(resized_im), 0.5, seg_image, 0.7, 0))
+
     if False: 
       plt.cla()
       plt.axis('off')
