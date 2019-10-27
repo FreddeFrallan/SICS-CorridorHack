@@ -18,7 +18,7 @@ def make_sender(frame_nr, host='localhost', port=5001):
     return to_display
 
 
-to_display = make_sender(frame_nr=3, host='localhost', port=5001)
+to_display = make_sender(frame_nr=5, host='localhost', port=5001)
 
 
 

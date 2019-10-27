@@ -1,0 +1,2 @@
+0000000000000000000000000000000000000000 fe91a2378f601cad5d8ffabc20de0683cfa41a95 Lars Rasmusson <Lars.Rasmusson@gmail.com> 1562234831 +0200	clone: from https://github.com/rwightman/posenet-pytorch
+fe91a2378f601cad5d8ffabc20de0683cfa41a95 ca7a57fd133d6b1b9212470d68c21bcad42f7d53 Lars Rasmusson <Lars.Rasmusson@ri.se> 1562240384 +0200	commit: now the data files are gzip:ed

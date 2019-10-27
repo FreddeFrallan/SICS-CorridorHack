@@ -2,8 +2,9 @@ import socket
 import threading
 import signal
 import sys
+import numpy as np
 
-def handle(c, storage):
+def handle(c, storage, qualityControl):
     ## read one utf-8 encoded line and some binary data
     ## "name" "space" "number_of_bytes" "newline" "bytes"
     data = b''
@@ -28,17 +29,23 @@ def handle(c, storage):
 
             if len(data) == num_bytes:
                 storage[name] = data
-                c.send(b'thanks\n')
+
+                if(qualityControl[int(name)].quality == "Low"):
+                    c.send(b'thanks low\n')
+                else:
+                    c.send(b'thanks high\n')
+
                 data = data[num_bytes:]
             else:
                 break
-        except:
+        except Exception as e:
+            print(e)
             break
 
     print('closing connection')
     c.close()
 
-def listener(host, port, storage):
+def listener(host, port, storage, qualityControl):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((host, port)) 
     s.listen(5) # number of pending connections before refusing = 5
@@ -49,7 +56,7 @@ def listener(host, port, storage):
         try:
             c, addr = s.accept()
             print(f'got connection from {addr}')
-            threading.Thread(target=handle, args=(c, storage), daemon=True).start()
+            threading.Thread(target=handle, args=(c, storage, qualityControl), daemon=True).start()
         except KeyboardInterrupt:
             print(f'goodbye {addr}')
             s.close()
@@ -59,19 +66,27 @@ class Sender:
     def __init__(self, host, port):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((host, port))
+        self.quality = "Low"
         
     def send(self, name, data):
         header = bytearray(f'{name} {len(data)}\n', 'utf-8')
         self.s.send(header + data)
-        assert (self.s.recv(1000) == b'thanks\n')
+        response = self.s.recv(1000)
+        if(response == b'thanks low\n'):
+            self.quality = "Low"
+        elif(response == b'thanks high\n'):
+            self.quality = "High"
+        else:
+            raise("Corrupt response")
+        #assert (self.s.recv(1000) == b'thanks\n')
 
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
         self.s.close()
 
-def start_listener(host, port, storage):
-    threading.Thread(target=listener, args=(host, port, storage)).start()
+def start_listener(host, port, storage, qualityControl):
+    threading.Thread(target=listener, args=(host, port, storage, qualityControl)).start()
 
 if __name__ == '__main__':
     d = {}
