@@ -28,7 +28,7 @@ old_start_img2txt() (
 
 start_img2txt1() (
     cd ~larsr/SICS-CorridorHack/Demo/display/annotate
-    ABCNEWS='https://www.youtube.com/watch?v=nu3iXDR7iXo'
+    ABCNEWS='https://www.youtube.com/watch?v=NvqKZHpKs-g'
 
     python send_img2txt.py --frame_nr 1 --url  "$ABCNEWS"
 )
@@ -69,10 +69,10 @@ start_YOLO1() (
 start_YOLO2() (
     cd ~larsr/SICS-CorridorHack/Demo/display/YOLO
     TRAFFIC='https://www.youtube.com/watch?v=94OODNhoXN4'
-    RAPPORT='https://youtu.be/ZB7h4YCSFXw'
+    PARIS="https://www.youtube.com/watch?v=NjDclfAFRB4"
     disp=3
     taskset --cpu-list 4 env CUDA_VISIBLE_DEVICES=1 \
-    ipython send_yolo.py localhost 5001 $disp  "$RAPPORT"
+    ipython send_yolo.py localhost 5001 $disp  "$PARIS"
 )
 
 start_runner() (
