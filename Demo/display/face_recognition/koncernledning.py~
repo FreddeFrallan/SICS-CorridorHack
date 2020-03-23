@@ -1,6 +1,0 @@
-import requests
-import bs4
-
-url = 'https://www.ri.se/sv/om-rise/organisation/koncernledning'
-
-t = bs4.BeautifulSoup(requests.get(url).content
