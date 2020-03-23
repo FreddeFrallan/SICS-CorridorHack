@@ -11,7 +11,7 @@ def make_sender(frame_nr, host='localhost', port=5001):
 
 
 
-frame_nr = 0
+frame_nr = 7
 filename = '/home/fredrik/Pictures/DemoPoster.png'
 
 import sys

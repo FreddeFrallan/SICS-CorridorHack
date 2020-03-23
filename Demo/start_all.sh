@@ -8,6 +8,9 @@
 # To give larsr the ability to open windows at fredrik's screen, do
 # sudo -u fredrik env DISPLAY=:0 xhost +si:localuser:larsr
 
+export COOKIES=$(pwd)/cookies.txt
+
+
 start_animation() (
     export DISPLAY="${1:-:0}"
     cd ~/SICS-CorridorHack/Demo/display
