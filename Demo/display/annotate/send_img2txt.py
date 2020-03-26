@@ -61,7 +61,7 @@ t.start()
 def drawText(img, text, x, y, font):
     im = PIL.Image.fromarray(img)
     draw = PIL.ImageDraw.ImageDraw(im)
-    draw.text((x, y), text, font=font)
+    draw.text((x, y), text, font=font, fill=(255,255,255,255))
     return np.array(im)
 
 
@@ -69,7 +69,13 @@ def draw_text_and_send():
     global text, font
     if len(video.buf) == 0: return
     img = video.buf[0]
-    img = drawText(img, text, 20, img.shape[0]-100, font)
+    textwidth = 30
+    pos = ([textwidth]+[i for i,x in enumerate(text) if i < textwidth and x == ' '])[-1]
+    text1 = text[:pos]
+    text2 = text[pos:]
+    img = drawText(img, text1, 20, 200, font)
+    img = drawText(img, text2, 20, 240, font)
+    #img = drawText(img, text, 20, img.shape[0]-100, font)
     print(f'{text}')
     send_to_display(img)
 

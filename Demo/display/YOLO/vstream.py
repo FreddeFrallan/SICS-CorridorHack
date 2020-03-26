@@ -3,6 +3,9 @@ import pafy
 import time
 import numpy as np
 import subprocess as sp
+import os
+
+ydl_opts = {'cookiefile':os.environ.get('COOKIES')}
 
 FFMPEG_BIN = "ffmpeg"  # on Linux and Mac OS
 
@@ -84,7 +87,7 @@ class YoutubeBuffer(VideoBuffer):
         except:
             pass
         
-        best = pafy.new(self.url).getbest()
+        best = pafy.new(self.url, ydl_opts=ydl_opts).getbest()
         u = best.url
         self.res = best.dimensions + (3,)
         self.fps = 30

@@ -2,7 +2,7 @@
 def start_yolo_thread():
     import threading
     import queue
-    import concurrent
+    import concurrent.futures
 
     import yolo_tf
     
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     from yolo_tf import drawOnImage
     
     import vstream
-    videosource = 'https://www.youtube.com/watch?v=rQSwh3bgs5k'
+    videosource = 'https://youtu.be/ZB7h4YCSFXw'
     vid = vstream.YoutubeBuffer(videosource)
     vid.start()
 
