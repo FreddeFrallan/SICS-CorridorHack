@@ -84,6 +84,14 @@ start_runner() (
 )
 
 
+start_deeplab() (
+     cd ~larsr/SICS-CorridorHack/Demo/display/deeplab
+     python demo.py
+)
+
+
+
+
 if [ "$@" ] ; then
     
     start_$@
