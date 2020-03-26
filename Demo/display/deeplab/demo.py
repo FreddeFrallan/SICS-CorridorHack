@@ -42,7 +42,9 @@ class DeepLabModel(object):
     with self.graph.as_default():
       tf.import_graph_def(graph_def, name='')
 
-    self.sess = tf.Session(graph=self.graph)
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.20)
+
+    self.sess = tf.Session(graph=self.graph, config=tf.ConfigProto(gpu_options=gpu_options))
 
   def run(self, image):
     """Runs inference on a single image.
@@ -187,7 +189,7 @@ while len(b.buf)==0:
 
 
 
-host, port, frame_nr = 'localhost', 5001, 7
+host, port, frame_nr = 'localhost', 5001, 0
 ####### REMOTE DISPLAY
 # prepare to send to display
 def make_sender(frame_nr, host='localhost', port=5001):
