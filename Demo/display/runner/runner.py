@@ -65,13 +65,13 @@ def demo_run():
       score += r
       frame += 1
       if (gui):
-        time.sleep(1. / 60)
+        pass # time.sleep(1. / 240)
 
       #still_open = env.render("human")
       #
       #if still_open == False:
       #  return
-      if frame%3 == 0:
+      if frame%7 == 0:
         from PIL import Image
         img = env.render('rgb_array')
         img = img[:,:,::-1]
